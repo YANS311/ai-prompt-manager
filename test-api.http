@@ -1,0 +1,93 @@
+### 1. 创建 Prompt - Claude Coding Agent
+POST http://localhost:8080/api/prompts
+Content-Type: application/json
+
+{
+  "title": "Claude Code Agent - 完整开发流程",
+  "content": "You are an expert software engineer. When implementing features:\n1. Read existing code first\n2. Follow project conventions\n3. Write clean, tested code\n4. Document critical decisions",
+  "category": "Coding"
+}
+
+### 2. 创建 Prompt - SQL 优化专家
+POST http://localhost:8080/api/prompts
+Content-Type: application/json
+
+{
+  "title": "PostgreSQL 性能调优助手",
+  "content": "Analyze the following SQL query and suggest optimizations:\n- Index recommendations\n- Query rewrite suggestions\n- Explain plan analysis",
+  "category": "Database"
+}
+
+### 3. 创建 Prompt - API 文档生成器
+POST http://localhost:8080/api/prompts
+Content-Type: application/json
+
+{
+  "title": "Spring Boot REST API 文档生成",
+  "content": "Generate comprehensive API documentation including:\n- Endpoint descriptions\n- Request/Response examples\n- Error codes\n- Authentication requirements",
+  "category": "Documentation"
+}
+
+### 4. 获取所有 Prompts（按创建时间倒序）
+GET http://localhost:8080/api/prompts
+
+### 5. 按分类查询 - Coding
+GET http://localhost:8080/api/prompts?category=Coding
+
+### 6. 按分类查询 - Database
+GET http://localhost:8080/api/prompts?category=Database
+
+### 7. 搜索包含 "Claude" 的 Prompts
+GET http://localhost:8080/api/prompts/search?keyword=Claude
+
+### 8. 搜索包含 "API" 的 Prompts
+GET http://localhost:8080/api/prompts/search?keyword=API
+
+### 9. 获取单个 Prompt (ID=1)
+GET http://localhost:8080/api/prompts/1
+
+### 10. 更新 Prompt (ID=1)
+PUT http://localhost:8080/api/prompts/1
+Content-Type: application/json
+
+{
+  "title": "Claude Code Agent - 增强版",
+  "content": "You are an expert software engineer with deep knowledge of:\n- Spring Boot ecosystem\n- Clean Architecture\n- Test-Driven Development\n- Performance optimization",
+  "category": "Coding"
+}
+
+### 11. 删除 Prompt (ID=2)
+DELETE http://localhost:8080/api/prompts/2
+
+### 12. 参数校验测试 - 空标题（应返回 400 错误）
+POST http://localhost:8080/api/prompts
+Content-Type: application/json
+
+{
+  "title": "",
+  "content": "This should fail due to @NotBlank validation",
+  "category": "Test"
+}
+
+### 13. 404 测试 - 查询不存在的 ID
+GET http://localhost:8080/api/prompts/999
+
+### 14. 批量创建 - AI Writing Assistant
+POST http://localhost:8080/api/prompts
+Content-Type: application/json
+
+{
+  "title": "技术博客写作助手",
+  "content": "帮我将以下技术要点扩展为一篇 1500 字的技术博客：\n- 使用清晰的章节结构\n- 包含代码示例\n- 添加最佳实践建议",
+  "category": "Writing"
+}
+
+### 15. 批量创建 - Code Review
+POST http://localhost:8080/api/prompts
+Content-Type: application/json
+
+{
+  "title": "Java Code Review Checklist",
+  "content": "Review this code for:\n✅ Null safety\n✅ Exception handling\n✅ Resource management\n✅ Thread safety\n✅ Performance bottlenecks",
+  "category": "Coding"
+}

@@ -1,0 +1,165 @@
+package com.ai.promptmanager.service;
+
+import com.ai.promptmanager.dto.PromptCreateDTO;
+import com.ai.promptmanager.dto.PromptDTO;
+import com.ai.promptmanager.dto.PromptUpdateDTO;
+import com.ai.promptmanager.entity.Prompt;
+import com.ai.promptmanager.mapper.PromptMapper;
+import com.ai.promptmanager.repository.PromptRepository;
+import com.ai.promptmanager.specification.PromptSpecification;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * Prompt业务层 V2 (使用DTO模式)
+ *
+ * 面试要点:
+ * 1. 为什么Service层返回DTO而不是Entity?
+ *    - 解耦：Controller不应该直接依赖Entity
+ *    - 安全：避免暴露数据库结构和敏感字段
+ *    - 灵活：DTO可以组合多个Entity的数据
+ *
+ * 2. @Transactional的作用?
+ *    - 保证ACID特性，出错自动回滚
+ *    - 默认传播级别：REQUIRED（当前有事务则加入，否则新建）
+ *    - 只对public方法有效
+ *    - 只回滚RuntimeException，不回滚CheckedException
+ *
+ * 3. MapStruct vs 手动映射的性能?
+ *    - MapStruct编译期生成代码，性能接近手动映射
+ *    - 避免反射，比BeanUtils快100倍以上
+ */
+@Service("promptServiceV2")
+public class PromptServiceV2 {
+
+    @Autowired
+    private PromptRepository repository;
+
+    @Autowired
+    private PromptMapper mapper;
+
+    /**
+     * 根据ID查询（带缓存）
+     */
+    @Cacheable(value = "prompts", key = "#id")
+    public PromptDTO findById(Long id) {
+        System.out.println("Cache MISS - 从数据库查询 ID: " + id);
+        Prompt prompt = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Prompt not found with id: " + id));
+        return mapper.toDTO(prompt);
+    }
+
+    /**
+     * 查询所有（带缓存）
+     */
+    @Cacheable(value = "promptList", key = "'all'")
+    public List<PromptDTO> findAll() {
+        System.out.println("Cache MISS - 从数据库查询所有数据");
+        List<Prompt> prompts = repository.findAllByOrderByCreatedAtDesc();
+        return mapper.toDTOList(prompts);
+    }
+
+    /**
+     * 分页查询（不缓存）
+     */
+    public Page<PromptDTO> findAllPaged(Pageable pageable) {
+        Page<Prompt> page = repository.findAll(pageable);
+        return page.map(mapper::toDTO);
+    }
+
+    /**
+     * 动态查询（支持多条件组合）
+     *
+     * 示例：查询标题包含"Java"且分类为"Coding"的数据
+     */
+    public List<PromptDTO> search(String keyword, String category,
+                                   LocalDateTime startDate, LocalDateTime endDate) {
+        Specification<Prompt> spec = PromptSpecification.filterBy(
+                keyword, category, startDate, endDate);
+        List<Prompt> prompts = repository.findAll(spec);
+        return mapper.toDTOList(prompts);
+    }
+
+    /**
+     * 动态查询 + 分页
+     */
+    public Page<PromptDTO> searchPaged(String keyword, String category,
+                                        LocalDateTime startDate, LocalDateTime endDate,
+                                        Pageable pageable) {
+        Specification<Prompt> spec = PromptSpecification.filterBy(
+                keyword, category, startDate, endDate);
+        Page<Prompt> page = repository.findAll(spec, pageable);
+        return page.map(mapper::toDTO);
+    }
+
+    /**
+     * 创建Prompt（清除缓存）
+     */
+    @Transactional
+    @CacheEvict(value = "promptList", allEntries = true)
+    public PromptDTO create(PromptCreateDTO createDTO) {
+        Prompt prompt = mapper.toEntity(createDTO);
+        Prompt saved = repository.save(prompt);
+        return mapper.toDTO(saved);
+    }
+
+    /**
+     * 更新Prompt（清除缓存）
+     */
+    @Transactional
+    @CacheEvict(value = {"prompts", "promptList"}, allEntries = true)
+    public PromptDTO update(Long id, PromptUpdateDTO updateDTO) {
+        Prompt prompt = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Prompt not found with id: " + id));
+
+        // 使用MapStruct更新字段
+        mapper.updateEntityFromDTO(updateDTO, prompt);
+
+        Prompt updated = repository.save(prompt);
+        return mapper.toDTO(updated);
+    }
+
+    /**
+     * 删除Prompt（软删除，清除缓存）
+     */
+    @Transactional
+    @CacheEvict(value = {"prompts", "promptList"}, allEntries = true)
+    public void deleteById(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RuntimeException("Prompt not found with id: " + id);
+        }
+        repository.deleteById(id); // 触发@SQLDelete，软删除
+    }
+
+    /**
+     * 按分类查询
+     */
+    public List<PromptDTO> findByCategory(String category) {
+        List<Prompt> prompts = repository.findByCategoryOrderByCreatedAtDesc(category);
+        return mapper.toDTOList(prompts);
+    }
+
+    /**
+     * 按标题搜索
+     */
+    public List<PromptDTO> searchByTitle(String keyword) {
+        List<Prompt> prompts = repository.findByTitleContainingIgnoreCase(keyword);
+        return mapper.toDTOList(prompts);
+    }
+
+    /**
+     * 检查是否存在
+     */
+    public boolean existsById(Long id) {
+        return repository.existsById(id);
+    }
+}

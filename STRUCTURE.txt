@@ -1,0 +1,178 @@
+AI Prompt & Snippet Manager - 项目结构
+=====================================
+
+📦 javaproject/
+│
+├── 📄 pom.xml                          Maven 依赖配置
+├── 📄 .gitignore                       Git 忽略规则
+├── 🚀 quick-start.sh                   一键启动脚本
+│
+├── 📚 文档/
+│   ├── README.md                       项目介绍 + 快速开始
+│   ├── SETUP.md                        详细环境配置指南
+│   ├── ARCHITECTURE.md                 系统架构设计文档
+│   ├── PROJECT_SUMMARY.md              项目完成清单
+│   └── test-api.http                   15 个 API 测试用例
+│
+└── 📁 src/
+    ├── main/
+    │   ├── java/com/ai/promptmanager/
+    │   │   │
+    │   │   ├── 🎯 PromptManagerApplication.java    [启动类]
+    │   │   │   • @SpringBootApplication
+    │   │   │   • @OpenAPIDefinition
+    │   │   │   • 打印启动信息（Swagger + H2 Console）
+    │   │   │
+    │   │   ├── 📦 entity/
+    │   │   │   └── Prompt.java                     [实体类]
+    │   │   │       • @Entity @Table
+    │   │   │       • 字段: id, title, content, category, createdAt, updatedAt
+    │   │   │       • @PrePersist / @PreUpdate 自动时间戳
+    │   │   │       • @NotBlank 参数校验
+    │   │   │
+    │   │   ├── 🗄️  repository/
+    │   │   │   └── PromptRepository.java           [数据访问层]
+    │   │   │       • extends JpaRepository<Prompt, Long>
+    │   │   │       • findByCategory()
+    │   │   │       • findByTitleContainingIgnoreCase()
+    │   │   │       • findAllByOrderByCreatedAtDesc()
+    │   │   │
+    │   │   ├── 🌐 controller/
+    │   │   │   └── PromptController.java           [REST API 控制器]
+    │   │   │       • @RestController @RequestMapping("/api/prompts")
+    │   │   │       • GET    /api/prompts           查询所有（支持分类筛选）
+    │   │   │       • POST   /api/prompts           创建新 Prompt
+    │   │   │       • GET    /api/prompts/{id}      根据 ID 查询
+    │   │   │       • PUT    /api/prompts/{id}      更新 Prompt
+    │   │   │       • DELETE /api/prompts/{id}      删除 Prompt
+    │   │   │       • GET    /api/prompts/search    关键词搜索
+    │   │   │
+    │   │   └── ⚠️  exception/
+    │   │       └── GlobalExceptionHandler.java     [全局异常处理]
+    │   │           • @RestControllerAdvice
+    │   │           • 处理参数校验错误 (400)
+    │   │           • 处理资源未找到 (404)
+    │   │           • 处理服务器错误 (500)
+    │   │           • 统一 ErrorResponse 格式
+    │   │
+    │   └── resources/
+    │       └── application.properties              [应用配置]
+    │           • 数据库配置 (H2 内存数据库)
+    │           • JPA 配置 (ddl-auto=update, show-sql=true)
+    │           • H2 Console 启用
+    │           • SpringDoc 配置
+    │
+    └── test/
+        └── java/                                   [测试代码目录]
+            └── (预留单元测试和集成测试)
+
+
+🔗 核心依赖
+===========
+• Spring Boot 3.4.0
+• Spring Data JPA
+• Spring Validation
+• H2 Database (runtime)
+• Lombok
+• SpringDoc OpenAPI 2.3.0
+
+
+📡 API 接口总览
+==============
+
+Base URL: http://localhost:8080/api/prompts
+
+┌─────────┬───────────────────────────┬─────────────────────────────┐
+│ Method  │ Endpoint                  │ Description                 │
+├─────────┼───────────────────────────┼─────────────────────────────┤
+│ GET     │ /api/prompts              │ 获取所有（支持?category=X） │
+│ GET     │ /api/prompts/{id}         │ 根据 ID 获取单个            │
+│ GET     │ /api/prompts/search       │ 关键词搜索（?keyword=X）    │
+│ POST    │ /api/prompts              │ 创建新 Prompt               │
+│ PUT     │ /api/prompts/{id}         │ 更新指定 Prompt             │
+│ DELETE  │ /api/prompts/{id}         │ 删除指定 Prompt             │
+└─────────┴───────────────────────────┴─────────────────────────────┘
+
+
+🎯 启动访问地址
+===============
+• 应用主页:    http://localhost:8080
+• Swagger UI:  http://localhost:8080/swagger-ui.html
+• API 文档:    http://localhost:8080/api-docs
+• H2 Console:  http://localhost:8080/h2-console
+  - JDBC URL:  jdbc:h2:mem:promptdb
+  - Username:  sa
+  - Password:  (留空)
+
+
+🚀 快速启动
+===========
+方式 1: 使用启动脚本
+    ./quick-start.sh
+
+方式 2: 使用 Maven
+    mvn clean install
+    mvn spring-boot:run
+
+方式 3: 在 IntelliJ IDEA
+    右键 PromptManagerApplication.java → Run
+
+
+🧪 测试示例
+===========
+创建 Prompt:
+    curl -X POST http://localhost:8080/api/prompts \
+      -H "Content-Type: application/json" \
+      -d '{"title": "Test", "content": "...", "category": "Coding"}'
+
+查询所有:
+    curl http://localhost:8080/api/prompts
+
+按分类查询:
+    curl "http://localhost:8080/api/prompts?category=Coding"
+
+搜索:
+    curl "http://localhost:8080/api/prompts/search?keyword=Claude"
+
+
+📈 项目统计
+===========
+• Java 类数:       5 个
+• REST 接口:       6 个
+• 自定义查询:      4 个
+• 测试用例:       15 个
+• 代码行数:      ~400 行
+• 文档页数:        5 份
+
+
+✨ 核心特性
+===========
+✅ 完整 CRUD 功能
+✅ RESTful API 设计
+✅ Swagger 文档
+✅ 参数校验与异常处理
+✅ 自动时间戳
+✅ 按时间倒序排序
+✅ 分类筛选
+✅ 关键词搜索
+✅ H2 Console 数据库管理
+
+
+🔮 扩展方向
+===========
+Phase 2: 分页、批量操作、标签系统
+Phase 3: Spring AI、Redis 缓存、全文搜索
+Phase 4: PostgreSQL、Docker、CI/CD
+Phase 5: 开源发布
+
+
+📝 License
+==========
+MIT License - 自由使用，欢迎贡献
+
+
+👨‍💻 作者
+=========
+Kanyun
+Made with ❤️ using Spring Boot
+

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Prompt & Snippet Manager - API 文档</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .subtitle { font-size: 1.2em; opacity: 0.9; }
+        .status {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .endpoint {
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-right: 10px;
+        }
+        .GET { background: #10b981; color: white; }
+        .POST { background: #3b82f6; color: white; }
+        .PUT { background: #f59e0b; color: white; }
+        .DELETE { background: #ef4444; color: white; }
+        .path {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            color: #667eea;
+        }
+        .description {
+            color: #666;
+            margin-top: 10px;
+        }
+        .example {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+        .quick-links {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .quick-links a {
+            display: inline-block;
+            margin-right: 15px;
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+        .quick-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI Prompt & Snippet Manager</h1>
+            <p class="subtitle">RESTful API 文档</p>
+        </header>
+
+        <div class="status">
+            <span class="status-indicator"></span>
+            <strong>API Status:</strong> 运行中 | <strong>Base URL:</strong> http://localhost:8080
+        </div>
+
+        <div class="quick-links">
+            <strong>🔗 快速链接:</strong>
+            <a href="/manager">Web 管理界面</a>
+            <a href="/api/prompts" target="_blank">测试 API</a>
+            <a href="/h2-console" target="_blank">H2 控制台</a>
+            <a href="https://github.com/yourusername/prompt-manager" target="_blank">GitHub</a>
+        </div>
+
+        <h2 style="margin-bottom: 20px;">📡 API 接口列表</h2>
+
+        <div class="endpoint">
+            <div>
+                <span class="method GET">GET</span>
+                <span class="path">/api/prompts</span>
+            </div>
+            <p class="description">获取所有 Prompts（按创建时间倒序）。支持可选的 <code>category</code> 参数筛选。</p>
+            <div class="example">
+<strong>请求示例:</strong>
+curl http://localhost:8080/api/prompts
+curl "http://localhost:8080/api/prompts?category=Coding"
+
+<strong>响应示例:</strong>
+[{
+  "id": 1,
+  "title": "Claude Code Agent",
+  "content": "Expert software engineer",
+  "category": "Coding",
+  "createdAt": "2026-05-06T17:00:00",
+  "updatedAt": "2026-05-06T17:00:00"
+}]
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div>
+                <span class="method GET">GET</span>
+                <span class="path">/api/prompts/{id}</span>
+            </div>
+            <p class="description">根据 ID 获取单个 Prompt。</p>
+            <div class="example">
+<strong>请求示例:</strong>
+curl http://localhost:8080/api/prompts/1
+
+<strong>响应:</strong> 200 OK (成功) / 404 Not Found (不存在)
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div>
+                <span class="method GET">GET</span>
+                <span class="path">/api/prompts/search</span>
+            </div>
+            <p class="description">根据关键词搜索标题（不区分大小写）。</p>
+            <div class="example">
+<strong>请求示例:</strong>
+curl "http://localhost:8080/api/prompts/search?keyword=Claude"
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div>
+                <span class="method POST">POST</span>
+                <span class="path">/api/prompts</span>
+            </div>
+            <p class="description">创建新的 Prompt。</p>
+            <div class="example">
+<strong>请求示例:</strong>
+curl -X POST http://localhost:8080/api/prompts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "测试 Prompt",
+    "content": "这是内容",
+    "category": "Test"
+  }'
+
+<strong>响应:</strong> 201 Created
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div>
+                <span class="method PUT">PUT</span>
+                <span class="path">/api/prompts/{id}</span>
+            </div>
+            <p class="description">更新指定 ID 的 Prompt。</p>
+            <div class="example">
+<strong>请求示例:</strong>
+curl -X PUT http://localhost:8080/api/prompts/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "更新后的标题",
+    "content": "更新后的内容",
+    "category": "Updated"
+  }'
+
+<strong>响应:</strong> 200 OK
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div>
+                <span class="method DELETE">DELETE</span>
+                <span class="path">/api/prompts/{id}</span>
+            </div>
+            <p class="description">删除指定 ID 的 Prompt。</p>
+            <div class="example">
+<strong>请求示例:</strong>
+curl -X DELETE http://localhost:8080/api/prompts/1
+
+<strong>响应:</strong> 204 No Content
+            </div>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-top: 30px;">
+            <h3>📚 数据模型</h3>
+            <div class="example">
+{
+  "id": Long,              // 自增主键
+  "title": String,         // 标题（必填）
+  "content": String,       // 内容
+  "category": String,      // 分类
+  "createdAt": DateTime,   // 创建时间（自动）
+  "updatedAt": DateTime    // 更新时间（自动）
+}
+            </div>
+        </div>
+
+        <div style="text-align: center; padding: 40px 20px; color: #666;">
+            <p>Made with ❤️ by Kanyun | Powered by Spring Boot 3.4</p>
+        </div>
+    </div>
+</body>
+</html>
