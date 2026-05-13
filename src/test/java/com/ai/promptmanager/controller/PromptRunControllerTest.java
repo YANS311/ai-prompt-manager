@@ -130,4 +130,97 @@ class PromptRunControllerTest extends TestBase {
                 .andExpect(jsonPath("$.data[0].inputText").value("Second input"))  // Most recent first
                 .andExpect(jsonPath("$.data[1].inputText").value("First input"));
     }
+
+    @Test
+    void testGetVariables_NoVariables() throws Exception {
+        // Given
+        Prompt savedPrompt = promptRepository.save(createPrompt("Plain Prompt", "No variables here", "Testing"));
+
+        // When & Then
+        mockMvc.perform(get("/api/prompts/" + savedPrompt.getId() + "/variables"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+    }
+
+    @Test
+    void testGetVariables_WithVariables() throws Exception {
+        // Given
+        Prompt savedPrompt = promptRepository.save(
+                createPrompt("Template Prompt", "You are a {role}, please complete {task}.", "Testing"));
+
+        // When & Then
+        mockMvc.perform(get("/api/prompts/" + savedPrompt.getId() + "/variables"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[*]", containsInAnyOrder("role", "task")));
+    }
+
+    @Test
+    void testPreview_Success() throws Exception {
+        // Given
+        Prompt savedPrompt = promptRepository.save(
+                createPrompt("Template", "You are a {role}, complete {task}.", "Testing"));
+        String previewPayload = "{\"variables\":{\"role\":\"Engineer\",\"task\":\"code review\"}}";
+
+        // When & Then
+        mockMvc.perform(post("/api/prompts/" + savedPrompt.getId() + "/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(previewPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.renderedPrompt").value("You are a Engineer, complete code review."));
+    }
+
+    @Test
+    void testPreview_MissingVariables_ReturnsBadRequest() throws Exception {
+        // Given
+        Prompt savedPrompt = promptRepository.save(
+                createPrompt("Template", "You are a {role}, complete {task}.", "Testing"));
+        String previewPayload = "{\"variables\":{\"role\":\"Engineer\"}}";
+
+        // When & Then
+        mockMvc.perform(post("/api/prompts/" + savedPrompt.getId() + "/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(previewPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message", containsString("缺少必需的模板变量")))
+                .andExpect(jsonPath("$.message", containsString("task")));
+    }
+
+    @Test
+    void testCreateRun_WithVariables_Success() throws Exception {
+        // Given
+        Prompt savedPrompt = promptRepository.save(
+                createPrompt("Template", "You are a {role}.", "Testing"));
+        String runPayload = "{\"variables\":{\"role\":\"Developer\"},\"modelName\":\"gpt-4\"}";
+
+        // When & Then
+        mockMvc.perform(post("/api/prompts/" + savedPrompt.getId() + "/runs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(runPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.renderedPrompt").value("You are a Developer."))
+                .andExpect(jsonPath("$.data.variablesJson", containsString("Developer")));
+    }
+
+    @Test
+    void testCreateRun_MissingVariables_ReturnsBadRequest() throws Exception {
+        // Given
+        Prompt savedPrompt = promptRepository.save(
+                createPrompt("Template", "You are a {role}, do {task}.", "Testing"));
+        String runPayload = "{\"variables\":{\"role\":\"Dev\"},\"modelName\":\"gpt-4\"}";
+
+        // When & Then
+        mockMvc.perform(post("/api/prompts/" + savedPrompt.getId() + "/runs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(runPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message", containsString("缺少必需的模板变量")));
+    }
 }

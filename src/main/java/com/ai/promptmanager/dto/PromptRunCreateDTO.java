@@ -3,16 +3,33 @@ package com.ai.promptmanager.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.Map;
+
 /**
  * Prompt Run 创建 DTO
+ *
+ * 支持模板变量：
+ * {
+ *   "modelName": "gpt-4",
+ *   "variables": {
+ *     "role": "Java工程师",
+ *     "task": "优化代码"
+ *   }
+ * }
  */
 public class PromptRunCreateDTO {
 
     /**
-     * 用户输入文本
+     * 用户输入文本（可选，用于追加到渲染后的 Prompt）
      */
     @Size(max = 10000, message = "输入文本长度不能超过10000个字符")
     private String inputText;
+
+    /**
+     * 模板变量映射
+     * key: 变量名, value: 变量值
+     */
+    private Map<String, String> variables;
 
     /**
      * 使用的模型名称
@@ -26,8 +43,9 @@ public class PromptRunCreateDTO {
     public PromptRunCreateDTO() {
     }
 
-    public PromptRunCreateDTO(String inputText, String modelName) {
+    public PromptRunCreateDTO(String inputText, Map<String, String> variables, String modelName) {
         this.inputText = inputText;
+        this.variables = variables;
         this.modelName = modelName;
     }
 
@@ -39,6 +57,14 @@ public class PromptRunCreateDTO {
 
     public void setInputText(String inputText) {
         this.inputText = inputText;
+    }
+
+    public Map<String, String> getVariables() {
+        return variables;
+    }
+
+    public void setVariables(Map<String, String> variables) {
+        this.variables = variables;
     }
 
     public String getModelName() {

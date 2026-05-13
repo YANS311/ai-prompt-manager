@@ -28,13 +28,20 @@ public class PromptRun {
     private Long promptId;
 
     /**
-     * 用户输入文本
+     * 用户输入文本（可选，用于追加到渲染后的 Prompt）
      */
     @Column(name = "input_text", columnDefinition = "TEXT")
     private String inputText;
 
     /**
-     * 渲染后的完整 Prompt (Prompt.content + inputText)
+     * 模板变量 JSON 存储 (Map<String, String> 序列化)
+     * 示例：{"role":"工程师","task":"优化代码"}
+     */
+    @Column(name = "variables_json", columnDefinition = "TEXT")
+    private String variablesJson;
+
+    /**
+     * 渲染后的完整 Prompt (替换变量后的结果)
      */
     @Column(name = "rendered_prompt", columnDefinition = "TEXT", nullable = false)
     private String renderedPrompt;
@@ -108,6 +115,14 @@ public class PromptRun {
 
     public void setInputText(String inputText) {
         this.inputText = inputText;
+    }
+
+    public String getVariablesJson() {
+        return variablesJson;
+    }
+
+    public void setVariablesJson(String variablesJson) {
+        this.variablesJson = variablesJson;
     }
 
     public String getRenderedPrompt() {

@@ -42,6 +42,9 @@ A production-ready RESTful API and Web UI for managing AI prompts and code snipp
 - **Pagination**: Efficient data loading with customizable page sizes
 
 ### 🤖 Agent Foundation (Mock LLM)
+- **Template Variables**: Support `{variable}` placeholders in prompts
+- **Variable Extraction**: Automatically detect template variables
+- **Prompt Preview**: Preview rendered prompts without execution
 - **Prompt Run Execution**: Record and track prompt executions
 - **Mock LLM Responses**: Simulated model responses for development
 - **Run History**: Query execution history per prompt
@@ -154,16 +157,57 @@ mvn clean spring-boot:run
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/api/prompts/{id}/variables` | Extract template variables from a prompt |
+| `POST` | `/api/prompts/{id}/preview` | Preview rendered prompt (no execution) |
 | `POST` | `/api/prompts/{id}/runs` | Execute a prompt run (Mock LLM) |
 | `GET` | `/api/prompts/{id}/runs` | Get run history for a prompt |
 
 **Note**: Currently returns Mock responses. Ready for real LLM integration (OpenAI/Claude/DeepSeek).
 
-#### Example: Execute Prompt Run
+#### Example 1: Extract Template Variables
+```bash
+# Prompt content: "You are a {role}, please complete {task} in {format} format."
+GET /api/prompts/1/variables
+```
+
+Response:
+```json
+{
+  "code": 200,
+  "data": ["role", "task", "format"]
+}
+```
+
+#### Example 2: Preview Rendered Prompt
+```bash
+POST /api/prompts/1/preview
+{
+  "variables": {
+    "role": "Java后端工程师",
+    "task": "优化Service层代码",
+    "format": "Markdown"
+  }
+}
+```
+
+Response:
+```json
+{
+  "code": 200,
+  "data": {
+    "renderedPrompt": "You are a Java后端工程师, please complete 优化Service层代码 in Markdown format."
+  }
+}
+```
+
+#### Example 3: Execute Prompt Run with Variables
 ```bash
 POST /api/prompts/1/runs
 {
-  "inputText": "Write a Java function to reverse a string",
+  "variables": {
+    "role": "Java Engineer",
+    "task": "optimize code"
+  },
   "modelName": "gpt-4"
 }
 ```
@@ -176,14 +220,34 @@ Response:
   "data": {
     "id": 1,
     "promptId": 1,
-    "inputText": "Write a Java function to reverse a string",
-    "renderedPrompt": "You are a Java expert...\n\nWrite a Java function to reverse a string",
+    "variablesJson": "{\"role\":\"Java Engineer\",\"task\":\"optimize code\"}",
+    "renderedPrompt": "You are a Java Engineer, please complete optimize code.",
     "modelName": "gpt-4",
     "responseText": "Mock response from model [gpt-4]:\n\nThis is a simulated response...",
     "status": "SUCCESS",
     "latencyMs": 15,
-    "createdAt": "2026-05-11 19:00:00"
+    "createdAt": "2026-05-13 19:00:00"
   }
+}
+```
+
+#### Example 4: Missing Variables Returns Error
+```bash
+POST /api/prompts/1/runs
+{
+  "variables": {
+    "role": "Engineer"
+  },
+  "modelName": "gpt-4"
+}
+```
+
+Response:
+```json
+{
+  "code": 400,
+  "message": "缺少必需的模板变量: task, format",
+  "data": null
 }
 ```
 
@@ -228,14 +292,32 @@ All endpoints use DTOs for type safety and security:
 
 ## 🎯 Core Features Explained
 
-### 1. **DTO Pattern with MapStruct**
+### 1. **Template Variables**
+**Why?** Enable dynamic prompt generation with reusable templates.
+
+**How it works:**
+```java
+// Define template with {variables}
+String template = "You are a {role}, complete {task}.";
+
+// Extract variables
+List<String> vars = PromptTemplateUtil.extractVariables(template);
+// Returns: ["role", "task"]
+
+// Render with values
+Map<String, String> values = Map.of("role", "Engineer", "task", "code review");
+String rendered = PromptTemplateUtil.render(template, values);
+// Returns: "You are a Engineer, complete code review."
+```
+
+### 2. **DTO Pattern with MapStruct**
 **Why?** Prevents exposing internal entity structure and sensitive fields.
 
 **Performance Comparison (1000 mappings):**
 - MapStruct: ~1ms (compile-time code generation)
 - BeanUtils: ~150ms (runtime reflection)
 
-### 2. **Soft Delete**
+### 3. **Soft Delete**
 Deleted records are marked with `deleted=true` instead of physical removal:
 ```sql
 -- Hibernate intercepts DELETE and converts to UPDATE
@@ -245,7 +327,7 @@ UPDATE prompts SET deleted = true WHERE id = ?
 SELECT * FROM prompts WHERE deleted = false
 ```
 
-### 3. **Category Filtering and Pagination**
+### 4. **Category Filtering and Pagination**
 Efficient filtering with support for both list and paginated queries:
 ```java
 // Filter by category
@@ -258,7 +340,7 @@ GET /api/prompts/page?page=0&size=10&category=Coding
 GET /api/prompts/search?keyword=java
 ```
 
-### 4. **Local Caching Strategy**
+### 5. **Local Caching Strategy**
 - **Read**: Check cache first, query DB on miss, then cache result
 - **Write**: Update DB, then invalidate cache
 - **Eviction**: 10-minute TTL with LRU policy

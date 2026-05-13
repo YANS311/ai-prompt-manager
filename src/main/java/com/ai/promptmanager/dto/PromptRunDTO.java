@@ -12,6 +12,7 @@ public class PromptRunDTO {
     private Long id;
     private Long promptId;
     private String inputText;
+    private String variablesJson;
     private String renderedPrompt;
     private String modelName;
     private String responseText;
@@ -50,6 +51,14 @@ public class PromptRunDTO {
 
     public void setInputText(String inputText) {
         this.inputText = inputText;
+    }
+
+    public String getVariablesJson() {
+        return variablesJson;
+    }
+
+    public void setVariablesJson(String variablesJson) {
+        this.variablesJson = variablesJson;
     }
 
     public String getRenderedPrompt() {
