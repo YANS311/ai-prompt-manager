@@ -2,6 +2,10 @@ package com.ai.promptmanager.service;
 
 import com.ai.promptmanager.entity.Prompt;
 import com.ai.promptmanager.entity.PromptRun;
+import com.ai.promptmanager.llm.LlmProvider;
+import com.ai.promptmanager.llm.LlmProviderRegistry;
+import com.ai.promptmanager.llm.LlmRequest;
+import com.ai.promptmanager.llm.LlmResponse;
 import com.ai.promptmanager.repository.PromptRepository;
 import com.ai.promptmanager.repository.PromptRunRepository;
 import com.ai.promptmanager.util.PromptTemplateUtil;
@@ -35,19 +39,23 @@ public class PromptRunService {
     private PromptRunRepository promptRunRepository;
 
     @Autowired
+    private LlmProviderRegistry providerRegistry;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     /**
-     * 执行一次 Prompt Run (Mock LLM) - 支持模板变量
+     * 执行一次 Prompt Run - 支持模板变量和多 Provider
      *
      * @param promptId 要运行的 Prompt ID
      * @param inputText 用户输入（可选）
      * @param variables 模板变量
      * @param modelName 模型名称
+     * @param providerName LLM 提供商名称（可选，默认 "mock"）
      * @return 运行记录
      */
     @Transactional
-    public PromptRun executeRun(Long promptId, String inputText, Map<String, String> variables, String modelName) {
+    public PromptRun executeRun(Long promptId, String inputText, Map<String, String> variables, String modelName, String providerName) {
         long startTime = System.currentTimeMillis();
 
         // 1. 查询 Prompt，不存在则抛出异常
@@ -71,28 +79,43 @@ public class PromptRunService {
             renderedPrompt = renderedPrompt + "\n\n" + inputText;
         }
 
-        log.info("Executing Prompt Run - promptId: {}, model: {}, hasVariables: {}",
-                promptId, modelName, variables != null && !variables.isEmpty());
+        log.info("Executing Prompt Run - promptId: {}, provider: {}, model: {}, hasVariables: {}",
+                promptId, providerName, modelName, variables != null && !variables.isEmpty());
 
-        // 4. Mock 模型响应
-        String responseText = generateMockResponse(modelName, renderedPrompt);
+        // 4. Build LlmRequest
+        LlmRequest llmRequest = LlmRequest.builder()
+                .prompt(renderedPrompt)
+                .modelName(modelName)
+                .promptId(promptId)
+                .variables(variables)
+                .build();
 
-        // 5. 计算耗时
-        long latencyMs = System.currentTimeMillis() - startTime;
+        // 5. Get provider and execute
+        LlmProvider provider = providerRegistry.getProvider(providerName);
+        LlmResponse llmResponse = provider.generate(llmRequest);
 
-        // 6. 创建运行记录
+        // 6. Calculate total latency (including rendering + provider call)
+        long totalLatencyMs = System.currentTimeMillis() - startTime;
+
+        // 7. Create PromptRun record
         PromptRun run = new PromptRun();
         run.setPromptId(promptId);
         run.setInputText(inputText);
         run.setVariablesJson(serializeVariables(variables));
         run.setRenderedPrompt(renderedPrompt);
-        run.setModelName(modelName);
-        run.setResponseText(responseText);
-        run.setStatus(PromptRun.RunStatus.SUCCESS);
-        run.setLatencyMs(latencyMs);
+        run.setModelName(llmResponse.getModelName());
+        run.setProviderName(llmResponse.getProviderName());
+        run.setResponseText(llmResponse.getResponseText());
+        run.setStatus(llmResponse.getStatus().equals("SUCCESS")
+                ? PromptRun.RunStatus.SUCCESS
+                : PromptRun.RunStatus.FAILED);
+        run.setLatencyMs(totalLatencyMs);
+        run.setErrorMessage(llmResponse.getErrorMessage());
+        run.setTokenUsageJson(llmResponse.getTokenUsageJson());
 
         PromptRun saved = promptRunRepository.save(run);
-        log.info("Prompt Run completed - id: {}, latency: {}ms", saved.getId(), latencyMs);
+        log.info("Prompt Run completed - id: {}, status: {}, latency: {}ms",
+                saved.getId(), saved.getStatus(), totalLatencyMs);
 
         return saved;
     }
@@ -150,19 +173,5 @@ public class PromptRunService {
             log.warn("Failed to serialize variables: {}", e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * 生成 Mock 响应
-     *
-     * 未来可替换为真实 LLM 调用
-     */
-    private String generateMockResponse(String modelName, String renderedPrompt) {
-        // Mock 响应逻辑：返回简单的模拟文本
-        return String.format("Mock response from model [%s]:\n\n" +
-                        "This is a simulated response for your prompt. " +
-                        "The rendered prompt has %d characters. " +
-                        "In production, this would be replaced with actual LLM API calls to OpenAI, Claude, or DeepSeek.",
-                modelName, renderedPrompt.length());
     }
 }

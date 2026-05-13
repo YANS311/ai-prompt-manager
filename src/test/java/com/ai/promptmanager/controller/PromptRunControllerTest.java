@@ -223,4 +223,51 @@ class PromptRunControllerTest extends TestBase {
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message", containsString("缺少必需的模板变量")));
     }
+
+    @Test
+    void testCreateRun_WithProviderName_Success() throws Exception {
+        // Given
+        Prompt savedPrompt = promptRepository.save(createPrompt("Test", "Content", "Testing"));
+        String runPayload = "{\"providerName\":\"mock\",\"inputText\":\"User input\",\"modelName\":\"gpt-4\"}";
+
+        // When & Then
+        mockMvc.perform(post("/api/prompts/" + savedPrompt.getId() + "/runs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(runPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.providerName").value("mock"))
+                .andExpect(jsonPath("$.data.status").value("SUCCESS"));
+    }
+
+    @Test
+    void testCreateRun_NoProviderName_DefaultsToMock() throws Exception {
+        // Given
+        Prompt savedPrompt = promptRepository.save(createPrompt("Test", "Content", "Testing"));
+        String runPayload = "{\"inputText\":\"User input\",\"modelName\":\"gpt-4\"}";
+
+        // When & Then
+        mockMvc.perform(post("/api/prompts/" + savedPrompt.getId() + "/runs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(runPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.providerName").value("mock"));
+    }
+
+    @Test
+    void testCreateRun_UnknownProvider_Returns400() throws Exception {
+        // Given
+        Prompt savedPrompt = promptRepository.save(createPrompt("Test", "Content", "Testing"));
+        String runPayload = "{\"providerName\":\"openai\",\"inputText\":\"User input\",\"modelName\":\"gpt-4\"}";
+
+        // When & Then
+        mockMvc.perform(post("/api/prompts/" + savedPrompt.getId() + "/runs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(runPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message", containsString("Provider not found")))
+                .andExpect(jsonPath("$.message", containsString("openai")));
+    }
 }

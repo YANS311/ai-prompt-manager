@@ -38,6 +38,13 @@ public class PromptRunCreateDTO {
     @Size(max = 100, message = "模型名称长度不能超过100个字符")
     private String modelName;
 
+    /**
+     * LLM 提供商名称 (可选，默认为 "mock")
+     * 可选值: mock, openai, claude, deepseek
+     */
+    @Size(max = 50, message = "Provider name cannot exceed 50 characters")
+    private String providerName;
+
     // ==================== Constructors ====================
 
     public PromptRunCreateDTO() {
@@ -47,6 +54,13 @@ public class PromptRunCreateDTO {
         this.inputText = inputText;
         this.variables = variables;
         this.modelName = modelName;
+    }
+
+    public PromptRunCreateDTO(String inputText, Map<String, String> variables, String modelName, String providerName) {
+        this.inputText = inputText;
+        this.variables = variables;
+        this.modelName = modelName;
+        this.providerName = providerName;
     }
 
     // ==================== Getters & Setters ====================
@@ -73,5 +87,13 @@ public class PromptRunCreateDTO {
 
     public void setModelName(String modelName) {
         this.modelName = modelName;
+    }
+
+    public String getProviderName() {
+        return providerName;
+    }
+
+    public void setProviderName(String providerName) {
+        this.providerName = providerName;
     }
 }

@@ -1,6 +1,7 @@
 package com.ai.promptmanager.exception;
 
 import com.ai.promptmanager.dto.Result;
+import com.ai.promptmanager.llm.exception.LlmProviderNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -58,6 +59,16 @@ public class GlobalExceptionHandler {
 
         log.warn("参数校验失败: {}", errors);
         return new Result<>(400, "参数校验失败", errors);
+    }
+
+    /**
+     * 处理 LLM Provider 未找到异常
+     */
+    @ExceptionHandler(LlmProviderNotFoundException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<Void> handleLlmProviderNotFound(LlmProviderNotFoundException ex) {
+        log.warn("LLM Provider not found: {}", ex.getMessage());
+        return new Result<>(400, ex.getMessage(), null);
     }
 
     /**

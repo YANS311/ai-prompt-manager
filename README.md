@@ -51,6 +51,13 @@ A production-ready RESTful API and Web UI for managing AI prompts and code snipp
 - **Metrics Tracking**: Latency, status, and response tracking
 - **Preparation for Real LLM**: Foundation for OpenAI/Claude/DeepSeek integration
 
+### 🔌 LLM Provider Abstraction
+- **Extensible Architecture**: Clean provider interface for multiple LLM backends
+- **Mock Provider**: Default simulated LLM for development and testing
+- **Provider Registry**: Automatic discovery and routing of LLM providers
+- **Error Handling**: Graceful handling of unknown providers and API failures
+- **Future-Ready**: Prepared for OpenAI, Claude, and DeepSeek integration
+
 ---
 
 ## 🏗️ Tech Stack
@@ -153,16 +160,16 @@ mvn clean spring-boot:run
 | `PUT` | `/api/prompts/{id}` | Update prompt |
 | `DELETE` | `/api/prompts/{id}` | Delete prompt (soft delete) |
 
-### Prompt Run API (Mock LLM)
+### Prompt Run API (with LLM Provider Abstraction)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/prompts/{id}/variables` | Extract template variables from a prompt |
 | `POST` | `/api/prompts/{id}/preview` | Preview rendered prompt (no execution) |
-| `POST` | `/api/prompts/{id}/runs` | Execute a prompt run (Mock LLM) |
+| `POST` | `/api/prompts/{id}/runs` | Execute a prompt run (supports multiple providers) |
 | `GET` | `/api/prompts/{id}/runs` | Get run history for a prompt |
 
-**Note**: Currently returns Mock responses. Ready for real LLM integration (OpenAI/Claude/DeepSeek).
+**Supported Providers**: Currently only `mock` provider is implemented. Ready for real LLM integration (OpenAI/Claude/DeepSeek).
 
 #### Example 1: Extract Template Variables
 ```bash
@@ -200,15 +207,16 @@ Response:
 }
 ```
 
-#### Example 3: Execute Prompt Run with Variables
+#### Example 3: Execute Prompt Run with Provider Selection
 ```bash
 POST /api/prompts/1/runs
 {
+  "providerName": "mock",
+  "modelName": "gpt-4",
   "variables": {
-    "role": "Java Engineer",
-    "task": "optimize code"
-  },
-  "modelName": "gpt-4"
+    "role": "Java后端工程师",
+    "task": "优化Service层代码"
+  }
 }
 ```
 
@@ -220,18 +228,41 @@ Response:
   "data": {
     "id": 1,
     "promptId": 1,
-    "variablesJson": "{\"role\":\"Java Engineer\",\"task\":\"optimize code\"}",
-    "renderedPrompt": "You are a Java Engineer, please complete optimize code.",
+    "providerName": "mock",
     "modelName": "gpt-4",
+    "variablesJson": "{\"role\":\"Java后端工程师\",\"task\":\"优化Service层代码\"}",
+    "renderedPrompt": "You are a Java后端工程师, please complete 优化Service层代码.",
     "responseText": "Mock response from model [gpt-4]:\n\nThis is a simulated response...",
     "status": "SUCCESS",
     "latencyMs": 15,
+    "errorMessage": null,
+    "tokenUsageJson": null,
     "createdAt": "2026-05-13 19:00:00"
   }
 }
 ```
 
-#### Example 4: Missing Variables Returns Error
+**Note**: If `providerName` is omitted, defaults to `"mock"`.
+
+#### Example 4: Unknown Provider Returns Error
+```bash
+POST /api/prompts/1/runs
+{
+  "providerName": "openai",
+  "modelName": "gpt-4"
+}
+```
+
+Response:
+```json
+{
+  "code": 400,
+  "message": "Provider not found: openai. Available providers: mock",
+  "data": null
+}
+```
+
+#### Example 5: Missing Variables Returns Error
 ```bash
 POST /api/prompts/1/runs
 {
@@ -327,7 +358,63 @@ UPDATE prompts SET deleted = true WHERE id = ?
 SELECT * FROM prompts WHERE deleted = false
 ```
 
-### 4. **Category Filtering and Pagination**
+### 4. **LLM Provider Abstraction**
+**Why?** Enable seamless switching between multiple LLM backends without changing business logic.
+
+**Architecture:**
+```
+LlmProvider (interface)
+├── MockLlmProvider (current)
+├── OpenAIProvider (future)
+├── ClaudeProvider (future)
+└── DeepSeekProvider (future)
+
+LlmProviderRegistry
+├── Auto-discovers all providers
+├── Routes by providerName
+└── Defaults to "mock" if unspecified
+```
+
+**How it works:**
+```java
+// 1. Build LLM request
+LlmRequest request = LlmRequest.builder()
+        .prompt(renderedPrompt)
+        .modelName("gpt-4")
+        .build();
+
+// 2. Get provider from registry
+LlmProvider provider = registry.getProvider("mock");
+
+// 3. Execute
+LlmResponse response = provider.generate(request);
+
+// 4. Record result in PromptRun
+run.setProviderName(response.getProviderName());
+run.setResponseText(response.getResponseText());
+run.setStatus(response.getStatus());
+```
+
+**Adding new providers:**
+```java
+@Component
+public class OpenAIProvider implements LlmProvider {
+    @Override
+    public String getProviderName() {
+        return "openai";
+    }
+    
+    @Override
+    public LlmResponse generate(LlmRequest request) {
+        // Call OpenAI API
+        // Return response
+    }
+}
+```
+
+Provider auto-registration happens via Spring component scanning.
+
+### 5. **Category Filtering and Pagination**
 Efficient filtering with support for both list and paginated queries:
 ```java
 // Filter by category

@@ -15,9 +15,12 @@ public class PromptRunDTO {
     private String variablesJson;
     private String renderedPrompt;
     private String modelName;
+    private String providerName;
     private String responseText;
     private String status;
     private Long latencyMs;
+    private String errorMessage;
+    private String tokenUsageJson;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
@@ -107,5 +110,29 @@ public class PromptRunDTO {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getProviderName() {
+        return providerName;
+    }
+
+    public void setProviderName(String providerName) {
+        this.providerName = providerName;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public String getTokenUsageJson() {
+        return tokenUsageJson;
+    }
+
+    public void setTokenUsageJson(String tokenUsageJson) {
+        this.tokenUsageJson = tokenUsageJson;
     }
 }

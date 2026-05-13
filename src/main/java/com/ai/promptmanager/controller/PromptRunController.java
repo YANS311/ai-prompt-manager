@@ -5,6 +5,7 @@ import com.ai.promptmanager.dto.PromptRunCreateDTO;
 import com.ai.promptmanager.dto.PromptRunDTO;
 import com.ai.promptmanager.dto.Result;
 import com.ai.promptmanager.entity.PromptRun;
+import com.ai.promptmanager.llm.exception.LlmProviderNotFoundException;
 import com.ai.promptmanager.mapper.PromptRunMapper;
 import com.ai.promptmanager.service.PromptRunService;
 import jakarta.validation.Valid;
@@ -49,19 +50,24 @@ public class PromptRunController {
     public Result<PromptRunDTO> createRun(
             @PathVariable Long id,
             @Valid @RequestBody PromptRunCreateDTO createDTO) {
-        log.info("POST /api/prompts/{}/runs - model: {}, hasVariables: {}",
-                id, createDTO.getModelName(), createDTO.getVariables() != null);
+        log.info("POST /api/prompts/{}/runs - provider: {}, model: {}, hasVariables: {}",
+                id, createDTO.getProviderName(), createDTO.getModelName(), createDTO.getVariables() != null);
 
         try {
             PromptRun run = service.executeRun(
                     id,
                     createDTO.getInputText(),
                     createDTO.getVariables(),
-                    createDTO.getModelName());
+                    createDTO.getModelName(),
+                    createDTO.getProviderName());
             return Result.success("运行成功", mapper.toDTO(run));
         } catch (IllegalArgumentException e) {
             // 缺少必需的模板变量
             log.warn("Missing required variables for promptId: {}, error: {}", id, e.getMessage());
+            return new Result<>(400, e.getMessage(), null);
+        } catch (LlmProviderNotFoundException e) {
+            // 未知的 LLM 提供商
+            log.warn("Unknown provider for promptId: {}, error: {}", id, e.getMessage());
             return new Result<>(400, e.getMessage(), null);
         } catch (RuntimeException e) {
             log.error("Failed to execute Prompt Run for promptId: {}", id, e);

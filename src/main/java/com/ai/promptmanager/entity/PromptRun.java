@@ -53,10 +53,29 @@ public class PromptRun {
     private String modelName;
 
     /**
+     * LLM 提供商名称 (如 mock, openai, claude, deepseek)
+     */
+    @Column(name = "provider_name", length = 50)
+    private String providerName;
+
+    /**
      * 模型响应文本
      */
     @Column(name = "response_text", columnDefinition = "TEXT")
     private String responseText;
+
+    /**
+     * 错误信息 (如果运行失败)
+     */
+    @Column(name = "error_message", columnDefinition = "TEXT")
+    private String errorMessage;
+
+    /**
+     * Token 使用情况 JSON 存储
+     * 示例：{"prompt_tokens":10,"completion_tokens":20,"total_tokens":30}
+     */
+    @Column(name = "token_usage_json", columnDefinition = "TEXT")
+    private String tokenUsageJson;
 
     /**
      * 运行状态: SUCCESS, FAILED
@@ -171,5 +190,29 @@ public class PromptRun {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getProviderName() {
+        return providerName;
+    }
+
+    public void setProviderName(String providerName) {
+        this.providerName = providerName;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public String getTokenUsageJson() {
+        return tokenUsageJson;
+    }
+
+    public void setTokenUsageJson(String tokenUsageJson) {
+        this.tokenUsageJson = tokenUsageJson;
     }
 }
