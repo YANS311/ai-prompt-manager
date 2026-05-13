@@ -6,7 +6,7 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A production-ready RESTful API and Web UI for managing AI prompts and code snippets with advanced features like semantic search, caching, soft delete, and dynamic filtering.
+A production-ready RESTful API and Web UI for managing AI prompts and code snippets with advanced features like keyword search, caching, soft delete, and filtering.
 
 ---
 
@@ -15,8 +15,10 @@ A production-ready RESTful API and Web UI for managing AI prompts and code snipp
 ### 🏗️ Industrial-Grade Architecture
 - **Three-Layer Architecture**: Controller → Service → Repository
 - **DTO Pattern with MapStruct**: Compile-time object mapping (100x faster than BeanUtils)
+  - All REST API endpoints use DTOs instead of exposing Entity objects
+  - Separate DTOs for create, update, and query operations
 - **Unified Response Wrapper**: Consistent API response format with `Result<T>`
-- **Global Exception Handling**: Centralized error handling with detailed logging
+- **Global Exception Handling**: Centralized error handling with field-level validation errors
 
 ### ⚡ Performance Optimizations
 - **Local Caching**: Caffeine cache with 10-minute TTL
@@ -39,6 +41,13 @@ A production-ready RESTful API and Web UI for managing AI prompts and code snipp
 - **Search & Filter**: Keyword search and category filtering
 - **Pagination**: Efficient data loading with customizable page sizes
 
+### 🤖 Agent Foundation (Mock LLM)
+- **Prompt Run Execution**: Record and track prompt executions
+- **Mock LLM Responses**: Simulated model responses for development
+- **Run History**: Query execution history per prompt
+- **Metrics Tracking**: Latency, status, and response tracking
+- **Preparation for Real LLM**: Foundation for OpenAI/Claude/DeepSeek integration
+
 ---
 
 ## 🏗️ Tech Stack
@@ -54,7 +63,7 @@ A production-ready RESTful API and Web UI for managing AI prompts and code snipp
 | **Object Mapping** | MapStruct 1.5.5 |
 | **Validation** | Hibernate Validator (Bean Validation 3.0) |
 | **Build Tool** | Maven 3.9+ |
-| **Monitoring** | Spring Boot Actuator + Prometheus |
+| **Monitoring** | Spring Boot Actuator (metrics endpoints) |
 
 ---
 
@@ -141,6 +150,50 @@ mvn clean spring-boot:run
 | `PUT` | `/api/prompts/{id}` | Update prompt |
 | `DELETE` | `/api/prompts/{id}` | Delete prompt (soft delete) |
 
+### Prompt Run API (Mock LLM)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/prompts/{id}/runs` | Execute a prompt run (Mock LLM) |
+| `GET` | `/api/prompts/{id}/runs` | Get run history for a prompt |
+
+**Note**: Currently returns Mock responses. Ready for real LLM integration (OpenAI/Claude/DeepSeek).
+
+#### Example: Execute Prompt Run
+```bash
+POST /api/prompts/1/runs
+{
+  "inputText": "Write a Java function to reverse a string",
+  "modelName": "gpt-4"
+}
+```
+
+Response:
+```json
+{
+  "code": 200,
+  "message": "运行成功",
+  "data": {
+    "id": 1,
+    "promptId": 1,
+    "inputText": "Write a Java function to reverse a string",
+    "renderedPrompt": "You are a Java expert...\n\nWrite a Java function to reverse a string",
+    "modelName": "gpt-4",
+    "responseText": "Mock response from model [gpt-4]:\n\nThis is a simulated response...",
+    "status": "SUCCESS",
+    "latencyMs": 15,
+    "createdAt": "2026-05-11 19:00:00"
+  }
+}
+```
+
+### Request/Response DTOs
+
+All endpoints use DTOs for type safety and security:
+- **PromptDTO**: Read responses (excludes internal fields like `deleted`)
+- **PromptCreateDTO**: Create requests with validation (@NotBlank, @Size)
+- **PromptUpdateDTO**: Update requests with validation
+
 ### Example Response
 ```json
 {
@@ -151,10 +204,23 @@ mvn clean spring-boot:run
     "title": "Java Code Review",
     "content": "Please review this Java code...",
     "category": "Coding",
-    "createdAt": "2026-05-06T18:00:00",
-    "updatedAt": "2026-05-06T18:00:00"
+    "createdAt": "2026-05-06 18:00:00",
+    "updatedAt": "2026-05-06 18:00:00"
   },
   "timestamp": "2026-05-06T18:30:00"
+}
+```
+
+### Example Validation Error Response
+```json
+{
+  "code": 400,
+  "message": "参数校验失败",
+  "data": {
+    "title": "标题不能为空",
+    "content": "内容长度必须在 0 到 5000 之间"
+  },
+  "timestamp": "2026-05-11T18:30:00"
 }
 ```
 
@@ -179,18 +245,20 @@ UPDATE prompts SET deleted = true WHERE id = ?
 SELECT * FROM prompts WHERE deleted = false
 ```
 
-### 3. **Dynamic Query with Specification**
-Build flexible queries without method explosion:
+### 3. **Category Filtering and Pagination**
+Efficient filtering with support for both list and paginated queries:
 ```java
-Specification<Prompt> spec = PromptSpecification
-    .titleContains("Java")
-    .and(PromptSpecification.categoryEquals("Coding"))
-    .and(PromptSpecification.createdAfter(sevenDaysAgo));
+// Filter by category
+GET /api/prompts?category=Coding
 
-Page<Prompt> results = repository.findAll(spec, pageable);
+// Paginated with category filter
+GET /api/prompts/page?page=0&size=10&category=Coding
+
+// Keyword search (case-insensitive)
+GET /api/prompts/search?keyword=java
 ```
 
-### 4. **Caching Strategy**
+### 4. **Local Caching Strategy**
 - **Read**: Check cache first, query DB on miss, then cache result
 - **Write**: Update DB, then invalidate cache
 - **Eviction**: 10-minute TTL with LRU policy
@@ -228,6 +296,36 @@ Available metrics:
 
 ---
 
+## 🧪 Testing
+
+### Run Tests
+```bash
+./mvnw test
+```
+
+### Run Full Build with Tests
+```bash
+./mvnw clean verify
+```
+
+### Test Coverage
+The project includes comprehensive test coverage:
+- **Unit Tests**: Service layer logic with mocked dependencies
+- **Integration Tests**: Repository layer with H2 in-memory database
+- **Controller Tests**: REST API endpoints and web UI handlers
+- **Exception Handler Tests**: Global error handling verification
+
+All tests use H2 in-memory database for fast, isolated testing without requiring MySQL.
+
+### Continuous Integration
+GitHub Actions automatically runs the full test suite on every push and pull request. The CI pipeline:
+- Tests on multiple operating systems (Ubuntu, macOS)
+- Verifies Java 21 compatibility
+- Uploads test results as artifacts
+- Ensures code quality before merging
+
+---
+
 ## 🎓 Interview Highlights
 
 This project demonstrates knowledge of:
@@ -251,7 +349,7 @@ This project demonstrates knowledge of:
    - Global exception handling
    - Structured logging
    - Health checks and metrics
-   - Prometheus integration
+   - Actuator monitoring endpoints
 
 5. **Modern Java Features**
    - Java 21 Records (used in error responses)

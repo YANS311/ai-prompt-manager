@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
         });
 
         log.warn("参数校验失败: {}", errors);
-        return Result.badRequest("参数校验失败");
+        return new Result<>(400, "参数校验失败", errors);
     }
 
     /**

@@ -1,7 +1,11 @@
 package com.ai.promptmanager.controller;
 
+import com.ai.promptmanager.dto.PromptCreateDTO;
+import com.ai.promptmanager.dto.PromptDTO;
+import com.ai.promptmanager.dto.PromptUpdateDTO;
 import com.ai.promptmanager.dto.Result;
 import com.ai.promptmanager.entity.Prompt;
+import com.ai.promptmanager.mapper.PromptMapper;
 import com.ai.promptmanager.service.PromptService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -11,7 +15,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -39,14 +45,20 @@ public class PromptController {
 
     private static final Logger log = LoggerFactory.getLogger(PromptController.class);
 
+    private final PromptService service;
+    private final PromptMapper mapper;
+
     @Autowired
-    private PromptService service;
+    public PromptController(PromptService service, PromptMapper mapper) {
+        this.service = service;
+        this.mapper = mapper;
+    }
 
     /**
      * 查询所有 Prompts（支持按分类筛选）
      */
     @GetMapping
-    public Result<List<Prompt>> getAll(@RequestParam(required = false) String category) {
+    public Result<List<PromptDTO>> getAll(@RequestParam(required = false) String category) {
         log.info("GET /api/prompts - category: {}", category);
         List<Prompt> prompts;
         if (category != null && !category.isEmpty()) {
@@ -54,40 +66,50 @@ public class PromptController {
         } else {
             prompts = service.findAll();
         }
-        return Result.success(prompts);
+        return Result.success(mapper.toDTOList(prompts));
     }
 
     /**
      * 分页查询 Prompts
      */
     @GetMapping("/page")
-    public Result<Page<Prompt>> getPage(
+    public Result<Page<PromptDTO>> getPage(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String category) {
         log.info("GET /api/prompts/page - page: {}, size: {}, category: {}", page, size, category);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<Prompt> promptPage = service.findAllPaged(pageable);
-        return Result.success(promptPage);
+
+        Page<Prompt> promptPage;
+        if (category != null && !category.isEmpty()) {
+            promptPage = service.findByCategoryPaged(category, pageable);
+        } else {
+            promptPage = service.findAllPaged(pageable);
+        }
+
+        Page<PromptDTO> dtoPage = promptPage.map(mapper::toDTO);
+        return Result.success(dtoPage);
     }
 
     /**
      * 创建新 Prompt
      */
     @PostMapping
-    public Result<Prompt> create(@Valid @RequestBody Prompt prompt) {
-        log.info("POST /api/prompts - title: {}", prompt.getTitle());
-        Prompt created = service.save(prompt);
-        return Result.success("创建成功", created);
+    public Result<PromptDTO> create(@Valid @RequestBody PromptCreateDTO createDTO) {
+        log.info("POST /api/prompts - title: {}", createDTO.getTitle());
+        Prompt entity = mapper.toEntity(createDTO);
+        Prompt created = service.save(entity);
+        return Result.success("创建成功", mapper.toDTO(created));
     }
 
     /**
      * 根据 ID 查询单个 Prompt
      */
     @GetMapping("/{id}")
-    public Result<Prompt> getOne(@PathVariable Long id) {
+    public Result<PromptDTO> getOne(@PathVariable Long id) {
         log.info("GET /api/prompts/{}", id);
         return service.findById(id)
+                .map(mapper::toDTO)
                 .map(Result::success)
                 .orElseGet(() -> Result.notFound("Prompt不存在: id=" + id));
     }
@@ -96,15 +118,15 @@ public class PromptController {
      * 更新 Prompt
      */
     @PutMapping("/{id}")
-    public Result<Prompt> update(@PathVariable Long id, @Valid @RequestBody Prompt newPrompt) {
-        log.info("PUT /api/prompts/{} - title: {}", id, newPrompt.getTitle());
-        try {
-            Prompt updated = service.update(id, newPrompt);
-            return Result.success("更新成功", updated);
-        } catch (RuntimeException e) {
-            log.error("Update failed for id: {}", id, e);
-            return Result.notFound("Prompt不存在: id=" + id);
-        }
+    public Result<PromptDTO> update(@PathVariable Long id, @Valid @RequestBody PromptUpdateDTO updateDTO) {
+        log.info("PUT /api/prompts/{} - title: {}", id, updateDTO.getTitle());
+        Prompt existing = service.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Prompt不存在，id: " + id));
+
+        mapper.updateEntityFromDTO(updateDTO, existing);
+        Prompt updated = service.update(id, existing);
+        return Result.success("更新成功", mapper.toDTO(updated));
     }
 
     /**
@@ -124,9 +146,9 @@ public class PromptController {
      * 搜索 Prompts（按标题）
      */
     @GetMapping("/search")
-    public Result<List<Prompt>> search(@RequestParam String keyword) {
+    public Result<List<PromptDTO>> search(@RequestParam String keyword) {
         log.info("GET /api/prompts/search - keyword: {}", keyword);
         List<Prompt> results = service.searchByTitle(keyword);
-        return Result.success(results);
+        return Result.success(mapper.toDTOList(results));
     }
 }

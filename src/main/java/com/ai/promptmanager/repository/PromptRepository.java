@@ -1,6 +1,8 @@
 package com.ai.promptmanager.repository;
 
 import com.ai.promptmanager.entity.Prompt;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
@@ -43,4 +45,9 @@ public interface PromptRepository extends JpaRepository<Prompt, Long>, JpaSpecif
      * 查询所有并按创建时间倒序
      */
     List<Prompt> findAllByOrderByCreatedAtDesc();
+
+    /**
+     * 根据分类分页查询
+     */
+    Page<Prompt> findByCategory(String category, Pageable pageable);
 }

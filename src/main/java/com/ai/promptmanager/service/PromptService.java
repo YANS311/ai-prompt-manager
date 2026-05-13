@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -74,6 +75,13 @@ public class PromptService {
     }
 
     /**
+     * 根据分类分页查询 (不缓存)
+     */
+    public Page<Prompt> findByCategoryPaged(String category, Pageable pageable) {
+        return repository.findByCategory(category, pageable);
+    }
+
+    /**
      * 根据分类查询
      */
     public List<Prompt> findByCategory(String category) {
@@ -106,12 +114,16 @@ public class PromptService {
     /**
      * 更新 Prompt (清除对应缓存)
      *
-     * @CacheEvict:
-     * - 清除特定 ID 的缓存和列表缓存
+     * @Caching:
+     * - 清除特定 ID 的缓存 (prompts)
+     * - 清除所有列表缓存 (promptList)
      * - 保证下次查询时获取最新数据
      */
     @Transactional
-    @CacheEvict(value = {"prompts", "promptList"}, key = "#id")
+    @Caching(evict = {
+            @CacheEvict(value = "prompts", key = "#id"),
+            @CacheEvict(value = "promptList", allEntries = true)
+    })
     public Prompt update(Long id, Prompt newPrompt) {
         return repository.findById(id).map(prompt -> {
             prompt.setTitle(newPrompt.getTitle());
@@ -125,7 +137,10 @@ public class PromptService {
      * 删除 Prompt (清除对应缓存)
      */
     @Transactional
-    @CacheEvict(value = {"prompts", "promptList"}, key = "#id")
+    @Caching(evict = {
+            @CacheEvict(value = "prompts", key = "#id"),
+            @CacheEvict(value = "promptList", allEntries = true)
+    })
     public void deleteById(Long id) {
         repository.deleteById(id);
     }
