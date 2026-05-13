@@ -1,0 +1,34 @@
+# =============================================================
+# Conda environment for: 计算机视觉 作业 3
+# Oxford-IIIT Pet Dataset 图像分割实验
+# 跨平台:macOS (Intel/Apple Silicon) + Windows + Linux 均可使用
+# =============================================================
+# 创建环境:
+#   conda env create -f environment.yml
+# 激活环境:
+#   conda activate cv-pet-seg
+# 在 VS Code 中:打开 notebook 后,右上角 Select Kernel -> Python Environments -> cv-pet-seg
+# =============================================================
+name: cv-pet-seg
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy>=1.23
+  - scipy>=1.10
+  - matplotlib>=3.7
+  - pillow>=9.4
+  - tqdm
+  - jupyter
+  - jupyterlab
+  - notebook
+  - ipykernel
+  - ipywidgets
+  - scikit-image>=0.20
+  - scikit-learn>=1.2
+  - opencv>=4.7
+  - pytorch>=2.0
+  - torchvision>=0.15
