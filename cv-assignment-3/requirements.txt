@@ -1,0 +1,18 @@
+# pip 备用安装方式 (不推荐,优先使用 conda env create -f environment.yml)
+# 适用于已有 Python 3.10 环境的用户:
+#     pip install -r requirements.txt
+numpy>=1.23
+scipy>=1.10
+matplotlib>=3.7
+Pillow>=9.4
+tqdm
+jupyter
+jupyterlab
+notebook
+ipykernel
+ipywidgets
+scikit-image>=0.20
+scikit-learn>=1.2
+opencv-python>=4.7
+torch>=2.0
+torchvision>=0.15
